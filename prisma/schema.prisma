@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+model Source {
+  id String @id
+  url String @unique
+  country String
+  topic String
+  authority String
+  verificationStatus String @default("NEEDS_REVIEW")
+  retrievedAt DateTime @default(now())
+  verifiedAt DateTime?
+  effectiveDate DateTime?
+  reviewDueAt DateTime?
+  contentHash String
+  confidence Float @default(0)
+  documents SourceDocument[]
+  @@map("sources")
+}
+model SourceDocument {
+  id String @id @default(cuid())
+  sourceId String @map("source_id")
+  source Source @relation(fields:[sourceId],references:[id],onDelete:Cascade)
+  text String
+  contentHash String @unique @map("content_hash")
+  chunks DocumentChunk[]
+  @@map("source_documents")
+}
+model DocumentChunk {
+  id String @id @default(cuid())
+  documentId String @map("document_id")
+  document SourceDocument @relation(fields:[documentId],references:[id],onDelete:Cascade)
+  sourceId String @map("source_id")
+  text String
+  ordinal Int
+  embedding Unsupported("vector(1536)")?
+  @@unique([documentId,ordinal])
+  @@index([sourceId])
+  @@map("document_chunks")
+}
