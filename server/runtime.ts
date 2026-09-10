@@ -6,6 +6,9 @@ import type { State } from '@/components/workspace';
 type Runtime = {
   DB: D1Database;
   DOCUMENTS: R2Bucket;
+  AI_PROVIDER?: string;
+  GEMINI_API_KEY?: string;
+  EMBEDDING_PROVIDER?: string;
   OPENAI_API_KEY?: string;
   AI_MODEL?: string;
   EMBEDDING_MODEL?: string;

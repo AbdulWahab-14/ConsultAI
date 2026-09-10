@@ -25,7 +25,7 @@ npm.cmd run test:browser
 npm.cmd run build
 ```
 
-The automated browser suite creates disposable demo data. The public demo requires no AI key. It labels its consultation answers as guided, rule-based answers. For live generative consultation and document review, configure `OPENAI_API_KEY` and `AI_MODEL` server-side.
+The automated browser suite creates disposable demo data. The public demo requires no AI key. It labels its consultation answers as guided, rule-based answers. For live generative consultation and document review, configure `GEMINI_API_KEY` and `AI_MODEL` server-side.
 
 ## Product routes
 

@@ -6,7 +6,7 @@ Landing, editable demo/profile, dashboard, deterministic university/country matc
 
 ## External configuration needed
 
-- Live AI: `OPENAI_API_KEY` and `AI_MODEL`. Provider and document-review code exist, but cannot be confirmed live without credentials.
+- Live AI: `GEMINI_API_KEY` and `AI_MODEL`. Provider and document-review code exist, but cannot be confirmed live without credentials.
 - Administrator: sign in through the host and configure `ADMIN_EMAILS`.
 - Semantic retrieval: a PostgreSQL/pgvector database, schema migration, embeddings key and index run. The default demo does not use a vector database.
 

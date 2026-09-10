@@ -37,6 +37,7 @@ model DocumentChunk {
   sourceId String @map("source_id")
   text String
   ordinal Int
+  embeddingProfile String @default("legacy:unknown") @map("embedding_profile")
   embedding Unsupported("vector(1536)")?
   @@unique([documentId,ordinal])
   @@index([sourceId])

@@ -13,7 +13,7 @@ import {
 } from '@/server/runtime';
 import { guided } from '@/ai/guided';
 import { hybridRetrieve } from '@/ai/hybrid';
-import { OpenAIProvider } from '@/ai/provider';
+import { createAIProvider, withGuidedFallback } from '@/ai/provider';
 export async function POST(request: Request) {
   try {
     sameOrigin(request);
@@ -27,40 +27,43 @@ export async function POST(request: Request) {
     const catalog = await getCatalog();
     let answer = guided(message, state.profile, catalog);
     let mode = 'guided';
-    if (
-      env.OPENAI_API_KEY &&
-      env.AI_MODEL &&
-      !/fake|forge|guarantee|100%/i.test(message)
-    ) {
-      const { sources: evidence } = await hybridRetrieve(message);
-      const ai = new OpenAIProvider(env.OPENAI_API_KEY, env.AI_MODEL);
-      const claims = await ai.consult(
-        {
-          profile: state.profile,
-          saved: state.saved,
-          applications: state.applications,
-          messages: state.messages.slice(-8),
-          question: message,
+    const ai = createAIProvider(env);
+    if (ai && !/fake|forge|guarantee|100%/i.test(message)) {
+      const result = await withGuidedFallback(
+        async () => {
+          const { sources: evidence } = await hybridRetrieve(message);
+          const claims = await ai.consult(
+            {
+              profile: state.profile,
+              saved: state.saved,
+              applications: state.applications,
+              messages: state.messages.slice(-8),
+              question: message,
+            },
+            evidence,
+          );
+          const text = claims
+            .map(
+              (c) =>
+                `${c.kind}: ${c.kind === 'FACT' ? c.quote : c.text}${
+                  c.sourceIds.length
+                    ? '\n' +
+                      c.sourceIds
+                        .map((id) => {
+                          const s = evidence.find((s) => s.id === id)!;
+                          return `Source: ${s.organization} — ${s.url}`;
+                        })
+                        .join('\n')
+                    : ''
+                }`,
+            )
+            .join('\n\n');
+          return { text, mode: 'ai' };
         },
-        evidence,
+        { text: answer, mode: 'guided' },
       );
-      answer = claims
-        .map(
-          (c) =>
-            `${c.kind}: ${c.kind === 'FACT' ? c.quote : c.text}${
-              c.sourceIds.length
-                ? '\n' +
-                  c.sourceIds
-                    .map((id) => {
-                      const s = evidence.find((s) => s.id === id)!;
-                      return `Source: ${s.organization} — ${s.url}`;
-                    })
-                    .join('\n')
-                : ''
-            }`,
-        )
-        .join('\n\n');
-      mode = 'ai';
+      answer = result.text;
+      mode = result.mode;
     }
     state.messages = [
       ...state.messages,

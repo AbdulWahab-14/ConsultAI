@@ -1,5 +1,13 @@
 const live = process.argv.includes('--live-ai');
-const required = live ? ['OPENAI_API_KEY', 'AI_MODEL'] : [];
+const provider = (process.env.AI_PROVIDER || 'gemini').trim().toLowerCase();
+const keys = { gemini: 'GEMINI_API_KEY', openai: 'OPENAI_API_KEY' };
+if (live && !Object.hasOwn(keys, provider)) {
+  console.error(
+    'Unsupported AI_PROVIDER. Register an adapter before enabling it.',
+  );
+  process.exit(1);
+}
+const required = live ? [keys[provider], 'AI_MODEL'] : [];
 const missing = required.filter((k) => !process.env[k]);
 if (missing.length) {
   console.error(`Missing: ${missing.join(', ')}`);
