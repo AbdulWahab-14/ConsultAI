@@ -1,3 +1,4 @@
+import { isIntroduction } from './consultation-status';
 import { analyze, type Profile } from '@/lib/matching';
 import { money, sources, programs } from '@/lib/catalog';
 import { defaultWeights } from '@/lib/matching';
@@ -17,6 +18,8 @@ export function guided(
     /visa|admission|scholarship/i.test(message)
   )
     return 'I cannot guarantee admission, a scholarship or a visa. Fit scores compare planning compatibility; visa readiness only measures preparation.';
+  if (isIntroduction(message))
+    return "I'm ConsultAI, your study-abroad planning assistant. I can help you compare the universities in our catalog, understand reviewed requirements and planning costs, track applications, and improve your statement of purpose. I use your saved profile to personalize guidance and cite reviewed sources for factual advice. I cannot guarantee admission, scholarships or visas. What would you like to work on?";
   const context = retrieve(message, new Date(), catalog.sources);
   if (/visa|deadline|requirement|scholarship|korea|german/i.test(message)) {
     return context.length

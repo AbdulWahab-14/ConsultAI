@@ -176,6 +176,9 @@ export default function Workspace({ route }: { route: string }) {
   const [state, setState] = useState<State>(initial);
   const [ready, setReady] = useState(false);
   const [notice, setNotice] = useState('');
+  const [consultantStatus, setConsultantStatus] = useState(
+    'Answers distinguish cited evidence, estimates and guidance.',
+  );
   const [source, setSource] = useState<Source | null>(null);
   const [scan, setScan] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -352,14 +355,13 @@ export default function Workspace({ route }: { route: string }) {
         error?: string;
         state: State;
         mode: string;
+        responseStatus?: string;
       };
       if (!r.ok) throw Error(d.error || 'Consultation unavailable.');
       setState(d.state);
-      setNotice(
-        d.mode === 'guided'
-          ? 'Guided mode · generative AI is not configured.'
-          : 'Answer validated against retrieved evidence.',
-      );
+      const status = d.responseStatus || 'Consultation response received.';
+      setConsultantStatus(status);
+      setNotice(status);
     } catch (e) {
       setNotice(e instanceof Error ? e.message : 'Please retry.');
       setDraft(text);
@@ -1396,8 +1398,7 @@ export default function Workspace({ route }: { route: string }) {
                   </Button>
                 </form>
                 <p className="tiny">
-                  No API key? Guided mode provides clearly labeled rule-based
-                  answers.
+                  {busy ? 'Preparing your response…' : consultantStatus}
                 </p>
               </section>
             </>

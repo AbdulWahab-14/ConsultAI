@@ -1,3 +1,8 @@
+import {
+  consultationStatus,
+  isIntroduction,
+  type GuidedReason,
+} from '@/ai/consultation-status';
 import { getCatalog } from '@/server/catalog';
 import { z } from 'zod';
 import {
@@ -28,7 +33,16 @@ export async function POST(request: Request) {
     let answer = guided(message, state.profile, catalog);
     let mode = 'guided';
     const ai = createAIProvider(env);
-    if (ai && !/fake|forge|guarantee|100%/i.test(message)) {
+    const introduction = isIntroduction(message);
+    const safety = /fake|forge|guarantee|100%/i.test(message);
+    const guidedReason: GuidedReason = introduction
+      ? 'introduction'
+      : safety
+        ? 'safety'
+        : !ai
+          ? 'not_configured'
+          : 'unavailable';
+    if (ai && !safety && !introduction) {
       const result = await withGuidedFallback(
         async () => {
           const { sources: evidence } = await hybridRetrieve(message);
@@ -71,7 +85,11 @@ export async function POST(request: Request) {
       { role: 'assistant' as const, text: answer },
     ].slice(-100);
     await saveState(user.id, state);
-    return json({ state, mode });
+    return json({
+      state,
+      mode,
+      responseStatus: consultationStatus(mode, guidedReason),
+    });
   } catch (e) {
     return errorResponse(e);
   }
