@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { cookies } from 'next/headers';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
-import { demoProfile } from '@/lib/matching';
+import { newWorkspace, restoreWorkspace } from '@/lib/workspace-state';
 import type { State } from '@/components/workspace';
 type Runtime = {
   DB: D1Database;
@@ -88,17 +88,7 @@ export async function loadState(id: string): Promise<State> {
     .DB.prepare('SELECT state FROM workspaces WHERE id = ?')
     .bind(id)
     .first<{ state: string }>();
-  return row
-    ? JSON.parse(row.state)
-    : {
-        profile: demoProfile,
-        saved: [],
-        compare: [],
-        applications: [],
-        checks: [],
-        messages: [],
-        reports: [],
-      };
+  return row ? restoreWorkspace(JSON.parse(row.state)) : newWorkspace();
 }
 export async function saveState(id: string, state: State) {
   await runtime()

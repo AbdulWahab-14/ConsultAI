@@ -40,7 +40,7 @@ export async function PUT(request: Request) {
     next.checks = [...new Set(next.checks)];
     const previous = await loadState(user.id);
     next.messages = previous.messages;
-    await saveState(user.id, next);
+    await saveState(user.id, { ...next, profileCompleted: true });
     return json({ ok: true });
   } catch (e) {
     return errorResponse(e);

@@ -67,7 +67,6 @@ import {
   TableCell,
 } from '@/components/ui/table';
 import {
-  demoProfile,
   analyze,
   profileStrength,
   defaultWeights,
@@ -83,6 +82,8 @@ import {
 } from '@/lib/catalog';
 import DocumentCoach from './document-coach';
 import Admin from './admin-center';
+import ProfileOnboarding from './profile-onboarding';
+import { newWorkspace } from '@/lib/workspace-state';
 const nav = [
   ['dashboard', 'Overview', LayoutDashboard],
   ['consultant', 'AI consultant', MessageSquare],
@@ -105,6 +106,7 @@ export type AppRecord = {
   tasks: string[];
 };
 export type State = {
+  profileCompleted?: boolean;
   profile: Profile;
   saved: string[];
   compare: string[];
@@ -113,15 +115,7 @@ export type State = {
   messages: { role: 'user' | 'assistant'; text: string }[];
   reports: { id: string; createdAt: string; profile: Profile }[];
 };
-const initial: State = {
-  profile: demoProfile,
-  saved: [],
-  compare: [],
-  applications: [],
-  checks: [],
-  messages: [],
-  reports: [],
-};
+const initial: State = newWorkspace();
 export function Choice({
   label,
   value,
@@ -369,6 +363,13 @@ export default function Workspace({ route }: { route: string }) {
       setBusy(false);
     }
   }
+  if (!ready)
+    return (
+      <main style={{ padding: 40 }}>
+        <output>{notice || 'Loading your workspace…'}</output>
+      </main>
+    );
+  if (!state.profileCompleted && page !== 'admin') return <ProfileOnboarding />;
   return (
     <SidebarProvider>
       <Sidebar className="app-sidebar">

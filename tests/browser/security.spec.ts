@@ -1,3 +1,5 @@
+import { demoProfile } from '../../lib/matching';
+import { seedProfile } from './profile-fixture';
 import { test, expect, request as requestFactory } from '@playwright/test';
 test('API validates input, blocks CSRF and isolates private files', async () => {
   const a = await requestFactory.newContext({
@@ -18,6 +20,15 @@ test('API validates input, blocks CSRF and isolates private files', async () => 
   const first = await a.get('/api/workspace');
   expect(first.ok()).toBeTruthy();
   const { state } = await first.json();
+  state.profile = demoProfile;
+  expect(
+    (
+      await a.put('/api/workspace', {
+        data: state,
+        headers: { Origin: 'http://localhost:3000' },
+      })
+    ).status(),
+  ).toBe(200);
   await b.get('/api/workspace');
   expect(
     (
@@ -98,4 +109,8 @@ test('profile editing and private document review are usable', async ({
     .getByRole('button', { name: 'Delete document', exact: true })
     .click();
   await expect(page.getByText('No document reviews saved yet.')).toBeVisible();
+});
+
+test.beforeEach(async ({ page, baseURL }) => {
+  await seedProfile(page, baseURL!);
 });

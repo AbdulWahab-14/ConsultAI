@@ -32,7 +32,7 @@ The automated browser suite creates disposable demo data. The public demo requir
 | Route                                  | Purpose                                                          |
 | -------------------------------------- | ---------------------------------------------------------------- |
 | `/`                                    | Landing page                                                     |
-| `/demo`                                | Editable Pakistani FSc 82%, IELTS 6.5, PKR 2.5m profile          |
+| `/demo`                                | Blank profile setup for each new visitor          |
 | `/dashboard`, `/profile`               | Command center and student profile                               |
 | `/universities`, `/universities/kaist` | Explorer and explainable eligibility                             |
 | `/countries`, `/scholarships`          | Country comparisons and scholarship leads                        |
@@ -58,3 +58,5 @@ The initial catalog contains **three real institutions** and **seven source reco
 This is a demonstrable product foundation, not a claim that the complete commercial SaaS brief is finished. See [implementation status](docs/IMPLEMENTATION_STATUS.md) for remaining features and external dependencies. Do not represent rule-based answers as live LLM responses, or keyword retrieval as active pgvector when credentials are absent.
 
 See [architecture](docs/ARCHITECTURE.md), [security](docs/SECURITY.md), [deployment](docs/DEPLOYMENT.md), and [demo script](docs/HACKATHON_DEMO.md).
+
+New visitors start with an empty profile form on `/profile`, `/demo` or any personalized route. They must save their own education, goals and budget before analysis or consultation. Browser sessions and signed-in identities have separate workspaces. The Taha example remains only a test fixture; it is never automatically used as a new visitor profile. Legacy unedited sample sessions reopen setup; customized saved profiles are preserved.

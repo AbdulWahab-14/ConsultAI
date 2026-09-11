@@ -1,3 +1,4 @@
+import { seedProfile } from './profile-fixture';
 import { test, expect } from '@playwright/test';
 test('demo acceptance: analyze, save, compare, apply and reload', async ({
   page,
@@ -99,4 +100,8 @@ test('mobile layout and navigation', async ({ page }) => {
   await page.getByRole('button', { name: 'Toggle Sidebar' }).click();
   await expect(page.getByRole('link', { name: /AI consultant/ })).toBeVisible();
   await page.screenshot({ path: 'artifacts/mobile-navigation.png' });
+});
+
+test.beforeEach(async ({ page, baseURL }) => {
+  await seedProfile(page, baseURL!);
 });

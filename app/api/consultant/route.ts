@@ -7,6 +7,7 @@ import { getCatalog } from '@/server/catalog';
 import { z } from 'zod';
 import {
   identity,
+  HttpError,
   loadState,
   saveState,
   json,
@@ -28,6 +29,11 @@ export async function POST(request: Request) {
       .object({ message: z.string().trim().min(1).max(4000) })
       .parse(await body(request, 20000));
     const state = await loadState(user.id);
+    if (!state.profileCompleted)
+      throw new HttpError(
+        422,
+        'Create and save your own profile before requesting personalized advice.',
+      );
     const env = runtime();
     const catalog = await getCatalog();
     let answer = guided(message, state.profile, catalog);
