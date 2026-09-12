@@ -548,7 +548,10 @@ export default function Workspace({ route }: { route: string }) {
                     Icon: ScanLine,
                     label: 'Profile strength',
                     value: profileStrength(p) + '%',
-                    sub: 'Add IELTS component scores',
+                    sub:
+                      p.components.length === 4
+                        ? 'IELTS components recorded'
+                        : 'Add IELTS component scores',
                     href: 'profile',
                   },
                   {
@@ -561,7 +564,13 @@ export default function Workspace({ route }: { route: string }) {
                   {
                     Icon: Sparkles,
                     label: 'Scholarship leads',
-                    value: '2',
+                    value: String(
+                      scholarships.filter(
+                        (s) =>
+                          s.degrees.includes(p.degree) &&
+                          p.preferred.includes(s.country),
+                      ).length,
+                    ),
                     sub: 'Individual eligibility needs review',
                     href: 'scholarships',
                   },
@@ -626,8 +635,12 @@ export default function Workspace({ route }: { route: string }) {
                   {[
                     [
                       '01',
-                      'Complete the picture',
-                      'Add individual English scores.',
+                      p.components.length === 4
+                        ? 'Keep your profile current'
+                        : 'Complete the picture',
+                      p.components.length === 4
+                        ? 'Review your education, goals and budget.'
+                        : 'Add individual English scores.',
                       '/profile',
                     ],
                     [
@@ -1581,7 +1594,10 @@ export default function Workspace({ route }: { route: string }) {
                 <h2>Recommended strategy</h2>
                 <p>
                   Resolve every mandatory gate, confirm full costs and avoid
-                  depending on an unawarded scholarship. Add IELTS components
+                  depending on an unawarded scholarship.{' '}
+                  {p.components.length === 4
+                    ? 'Check your recorded IELTS components'
+                    : 'Add IELTS components'}{' '}
                   and verify qualification equivalence before paying fees.
                 </p>
                 <h2>Sources</h2>
