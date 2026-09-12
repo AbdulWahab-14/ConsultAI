@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { contentHash, cosine, chunks } from '../../lib/knowledge';
 const mocks = vi.hoisted(() => ({
-  env: { DATABASE_URL: 'postgresql://unused', GEMINI_API_KEY: 'test-key' },
-  sql: vi.fn(),
+  all: vi.fn(),
+  bind: vi.fn(),
+  prepare: vi.fn(),
   embed: vi.fn(),
 }));
-vi.mock('../../server/runtime', () => ({ runtime: () => mocks.env }));
+vi.mock('../../server/runtime', () => ({
+  runtime: () => ({ DB: { prepare: mocks.prepare } }),
+}));
 vi.mock('../../server/catalog', () => ({
   getCatalog: async () => ({
     sources: [
@@ -15,12 +19,22 @@ vi.mock('../../server/catalog', () => ({
         title: 'German admission',
         text: 'Reviewed evidence.',
         status: 'VERIFIED',
+        verifiedAt: '2026-09-12',
         reviewDueAt: '2099-01-01',
+      },
+      {
+        id: 'stale',
+        country: 'Germany',
+        topic: 'admission',
+        title: 'Old admission',
+        text: 'Outdated evidence.',
+        status: 'VERIFIED',
+        verifiedAt: '2020-01-01',
+        reviewDueAt: '2020-02-01',
       },
     ],
   }),
 }));
-vi.mock('@neondatabase/serverless', () => ({ neon: () => mocks.sql }));
 vi.mock('../../ai/embeddings', () => ({
   createEmbeddingProvider: () => ({
     profile: 'gemini:gemini-embedding-001:1536',
@@ -29,43 +43,76 @@ vi.mock('../../ai/embeddings', () => ({
 }));
 import { hybridRetrieve } from '../../ai/hybrid';
 beforeEach(() => {
-  mocks.sql.mockReset().mockResolvedValue([]);
-  mocks.embed.mockReset().mockResolvedValue([Array(1536).fill(0.01)]);
+  mocks.prepare.mockReset().mockReturnValue({ bind: mocks.bind });
+  mocks.bind.mockReset().mockReturnValue({ all: mocks.all });
+  mocks.all.mockReset().mockResolvedValue({ results: [] });
+  mocks.embed.mockReset().mockResolvedValue([[1, 0]]);
 });
-describe('RAG survives provider switching', () => {
-  it('filters vectors by the exact embedding profile and uses query task type', async () => {
+describe('D1 semantic retrieval', () => {
+  it('ranks reviewed hash-matching embeddings and scopes the provider profile', async () => {
+    mocks.all.mockResolvedValue({
+      results: [
+        {
+          source_id: 'reviewed',
+          source_hash: await contentHash('Reviewed evidence.'),
+          text: 'Reviewed evidence.',
+          embedding: '[1,0]',
+        },
+      ],
+    });
     const result = await hybridRetrieve('German admission');
+    expect(result.mode).toContain('embeddings (D1');
+    expect(result.sources.map((s) => s.id)).toEqual(['reviewed']);
+    expect(mocks.bind).toHaveBeenCalledWith('gemini:gemini-embedding-001:1536');
     expect(mocks.embed).toHaveBeenCalledWith(
       ['German admission'],
       'RETRIEVAL_QUERY',
     );
-    const [strings, ...values] = mocks.sql.mock.calls[0];
-    expect(strings.join('')).toContain('c.embedding_profile =');
-    expect(values).toContain('gemini:gemini-embedding-001:1536');
-    expect(result.mode).toBe('structured + keyword');
   });
-  it('falls back to reviewed evidence on unavailable vectors or a missing migration', async () => {
-    mocks.sql.mockRejectedValue(new Error('missing column'));
-    expect((await hybridRetrieve('German admission')).sources[0].text).toBe(
-      'Reviewed evidence.',
+  it('rejects stale text, wrong hashes and unrelated countries', async () => {
+    expect((await hybridRetrieve('Korean visa')).sources).toEqual([]);
+    expect(mocks.embed).not.toHaveBeenCalled();
+    mocks.all.mockResolvedValue({
+      results: [
+        {
+          source_id: 'reviewed',
+          source_hash: 'old',
+          text: 'Changed deadline.',
+          embedding: '[1,0]',
+        },
+      ],
+    });
+    expect((await hybridRetrieve('German admission')).mode).toBe(
+      'structured + keyword',
     );
-    mocks.embed.mockRejectedValue(new Error('timeout'));
+    mocks.all.mockResolvedValue({
+      results: [
+        {
+          source_id: 'reviewed',
+          source_hash: await contentHash('Reviewed evidence.'),
+          text: 'Injected text.',
+          embedding: '[1,0]',
+        },
+      ],
+    });
     expect((await hybridRetrieve('German admission')).mode).toBe(
       'structured + keyword',
     );
   });
-  it('never queries unrelated evidence or admits stale indexed text', async () => {
-    expect((await hybridRetrieve('Korean visa')).sources).toEqual([]);
-    expect(mocks.embed).not.toHaveBeenCalled();
-    mocks.sql.mockResolvedValue([
-      {
-        source_id: 'reviewed',
-        source_hash: 'old',
-        text: 'Outdated requirement',
-      },
-    ]);
+  it('retains reviewed keyword retrieval when embeddings temporarily fail', async () => {
+    mocks.embed.mockRejectedValue(new Error('quota'));
     expect((await hybridRetrieve('German admission')).sources[0].text).toBe(
       'Reviewed evidence.',
     );
+  });
+  it('handles malformed vectors and preserves exact overlapping evidence', () => {
+    expect(cosine([1, 0], [1, 0])).toBe(1);
+    expect(cosine([1], [1, 0])).toBe(-1);
+    expect(cosine([0, 0], [1, 0])).toBe(-1);
+    expect(cosine([NaN], [1])).toBe(-1);
+    const text = 'a'.repeat(4000);
+    expect(
+      chunks(text).every((c) => text.includes(c) && c.length <= 1500),
+    ).toBe(true);
   });
 });

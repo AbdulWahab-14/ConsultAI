@@ -1,3 +1,4 @@
+import { additionalSources, additionalPrograms } from './demo-knowledge';
 export type Source = {
   id: string;
   title: string;
@@ -10,6 +11,8 @@ export type Source = {
   verifiedAt: string | null;
   reviewDueAt: string;
   status: 'VERIFIED' | 'NEEDS_REVIEW';
+  contentHash?: string;
+  captureHash?: string | null;
 };
 export const sources: Source[] = [
   {
@@ -104,6 +107,7 @@ export const sources: Source[] = [
     status: 'NEEDS_REVIEW',
   },
 ];
+sources.push(...additionalSources);
 export type Program = {
   id: string;
   name: string;
@@ -122,6 +126,12 @@ export type Program = {
   isDemoData: boolean;
   language: string;
   category: string;
+  ieltsComponentMin?: number | null;
+  academicRequirement?: string | null;
+  officialTuitionAmount?: number | null;
+  tuitionCurrency?: string | null;
+  tuitionIntake?: string | null;
+  deadline?: string | null;
 };
 // PKR figures are explicit scenario estimates, not institution quotations or live exchange conversions.
 export const programs: Program[] = [
@@ -167,6 +177,7 @@ export const programs: Program[] = [
   },
   {
     id: 'sheffield',
+    ieltsComponentMin: 6,
     name: 'University of Sheffield',
     short: 'SH',
     country: 'United Kingdom',
@@ -186,6 +197,7 @@ export const programs: Program[] = [
     category: 'Dream',
   },
 ];
+programs.push(...additionalPrograms);
 export const countries = ['South Korea', 'Germany', 'United Kingdom'];
 export const flags: Record<string, string> = {
   'South Korea': '🇰🇷',

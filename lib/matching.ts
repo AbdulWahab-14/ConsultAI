@@ -84,11 +84,13 @@ export function match(p: Profile, u: Program, w: Weights = defaultWeights) {
     issues.push(
       `IELTS ${Number((u.ielts - p.ielts).toFixed(1))} below the stored overall requirement.`,
     );
-  if (u.id === 'sheffield') {
+  if (u.ieltsComponentMin != null) {
     if (p.components.length !== 4)
       unknown.push('Four IELTS component scores needed.');
-    else if (p.components.some((v) => v < 6))
-      issues.push('An IELTS component is below 6.0.');
+    else if (p.components.some((v) => v < u.ieltsComponentMin!))
+      issues.push(
+        `An IELTS component is below ${u.ieltsComponentMin.toFixed(1)}.`,
+      );
   }
   if (
     u.country === 'Germany' &&

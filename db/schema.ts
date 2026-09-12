@@ -1,4 +1,10 @@
-import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  real,
+  index,
+} from 'drizzle-orm/sqlite-core';
 export const workspaces = sqliteTable('workspaces', {
   id: text('id').primaryKey(),
   state: text('state').notNull(),
@@ -44,3 +50,46 @@ export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+// SQL fields support deterministic matching/reporting; payload retains the full reviewed record.
+export const catalogRecords = sqliteTable(
+  'catalog_records',
+  {
+    key: text('key').primaryKey(),
+    kind: text('kind').notNull(),
+    recordId: text('record_id').notNull(),
+    country: text('country').notNull(),
+    payload: text('payload').notNull(),
+    ielts: real('ielts'),
+    ieltsComponentMin: real('ielts_component_min'),
+    academic: real('academic'),
+    academicRequirement: text('academic_requirement'),
+    tuition: real('tuition'),
+    tuitionCurrency: text('tuition_currency'),
+    deadline: text('deadline'),
+    requirements: text('requirements'),
+    gpa: real('gpa'),
+    gpaScale: real('gpa_scale'),
+    minimumCredits: integer('minimum_credits'),
+    amount: real('amount'),
+    currency: text('currency'),
+    sourceUrl: text('source_url'),
+    verifiedAt: text('verified_at'),
+    reviewDueAt: text('review_due_at'),
+    status: text('status'),
+    contentHash: text('content_hash'),
+  },
+  (t) => [index('catalog_kind_country').on(t.kind, t.country)],
+);
+export const knowledgeChunks = sqliteTable(
+  'knowledge_chunks',
+  {
+    id: text('id').primaryKey(),
+    sourceId: text('source_id').notNull(),
+    sourceHash: text('source_hash').notNull(),
+    text: text('text').notNull(),
+    embeddingProfile: text('embedding_profile').notNull(),
+    embedding: text('embedding').notNull(),
+    indexedAt: text('indexed_at').notNull(),
+  },
+  (t) => [index('chunks_profile_source').on(t.embeddingProfile, t.sourceId)],
+);

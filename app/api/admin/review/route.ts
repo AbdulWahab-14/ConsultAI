@@ -1,5 +1,7 @@
+import { contentHash } from '@/lib/knowledge';
+import { indexStatements, recordStatement } from '@/server/knowledge';
 import { z } from 'zod';
-import { sourceSchema, getCatalog } from '@/server/catalog';
+import { sourceSchema } from '@/server/catalog';
 import {
   requireAdmin,
   json,
@@ -21,9 +23,11 @@ export async function POST(request: Request) {
       })
       .parse(await body(request, 20000));
     const version = await runtime()
-      .DB.prepare('SELECT url,status FROM source_versions WHERE id=?')
+      .DB.prepare(
+        'SELECT url,status,content_hash FROM source_versions WHERE id=?',
+      )
       .bind(id)
-      .first<{ url: string; status: string }>();
+      .first<{ url: string; status: string; content_hash: string }>();
     if (!version) throw new HttpError(404, 'Source version not found.');
     if (action === 'APPROVE' && (!source || source.url !== version.url))
       throw new HttpError(
@@ -49,22 +53,19 @@ export async function POST(request: Request) {
         ),
     ];
     if (action === 'APPROVE' && source) {
-      const catalog = await getCatalog();
+      const today = new Date().toISOString().slice(0, 10);
+      if (source.reviewDueAt < today)
+        throw new HttpError(400, 'Set a future source review deadline.');
       const reviewed = {
         ...source,
         status: 'VERIFIED' as const,
-        verifiedAt: new Date().toISOString().slice(0, 10),
+        verifiedAt: today,
+        contentHash: await contentHash(source.text),
+        captureHash: version.content_hash,
       };
-      const next = [
-        ...catalog.sources.filter((s) => s.id !== source.id),
-        reviewed,
-      ];
       statements.push(
-        runtime()
-          .DB.prepare(
-            'INSERT INTO settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',
-          )
-          .bind('sources', JSON.stringify(next)),
+        recordStatement('sources', reviewed),
+        ...(await indexStatements([reviewed])),
       );
     }
     await runtime().DB.batch(statements);

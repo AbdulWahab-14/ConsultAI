@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       }
       text += decoder.decode(part.value, { stream: true });
     }
+    text += decoder.decode();
     text = text
       .replace(/<script[\s\S]*?<\/script>/gi, '')
       .replace(/<style[\s\S]*?<\/style>/gi, '')

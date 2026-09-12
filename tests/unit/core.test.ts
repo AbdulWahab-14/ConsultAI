@@ -43,7 +43,9 @@ describe('explainable matching', () => {
 });
 describe('AI safety and evidence', () => {
   it('filters country and visa topic', () =>
-    expect(retrieve('Korean D-2 visa', new Date('2026-09-09'))).toEqual([]));
+    expect(
+      retrieve('Korean D-2 visa', new Date('2026-09-12')).map((s) => s.id),
+    ).toEqual(['korea-visa']));
   it('excludes stale information', () =>
     expect(retrieve('UK visa', new Date('2030-01-01'))).toEqual([]));
   it('invalid citations become unverified', () =>

@@ -1,12 +1,14 @@
 import { demoProfile } from '../../lib/matching';
 import { seedProfile } from './profile-fixture';
 import { test, expect, request as requestFactory } from '@playwright/test';
-test('API validates input, blocks CSRF and isolates private files', async () => {
+test('API validates input, blocks CSRF and isolates private files', async ({
+  baseURL,
+}) => {
   const a = await requestFactory.newContext({
-    baseURL: 'http://localhost:3000',
+    baseURL,
   });
   const b = await requestFactory.newContext({
-    baseURL: 'http://localhost:3000',
+    baseURL,
   });
   expect((await a.get('/api/admin')).status()).toBe(403);
   expect(
@@ -25,7 +27,7 @@ test('API validates input, blocks CSRF and isolates private files', async () => 
     (
       await a.put('/api/workspace', {
         data: state,
-        headers: { Origin: 'http://localhost:3000' },
+        headers: { Origin: baseURL! },
       })
     ).status(),
   ).toBe(200);
@@ -34,7 +36,7 @@ test('API validates input, blocks CSRF and isolates private files', async () => 
     (
       await a.put('/api/workspace', {
         data: { ...state, profile: { ...state.profile, marks: 110 } },
-        headers: { Origin: 'http://localhost:3000' },
+        headers: { Origin: baseURL! },
       })
     ).status(),
   ).toBe(400);
@@ -42,7 +44,7 @@ test('API validates input, blocks CSRF and isolates private files', async () => 
     data: {
       text: 'I developed a small programming project during my studies. I want to study computer science because I enjoy solving practical problems.',
     },
-    headers: { Origin: 'http://localhost:3000' },
+    headers: { Origin: baseURL! },
   });
   expect(doc.ok()).toBeTruthy();
   const { id } = await doc.json();
@@ -52,7 +54,7 @@ test('API validates input, blocks CSRF and isolates private files', async () => 
     (
       await b.delete('/api/documents', {
         data: { id },
-        headers: { Origin: 'http://localhost:3000' },
+        headers: { Origin: baseURL! },
       })
     ).status(),
   ).toBe(404);
@@ -60,18 +62,19 @@ test('API validates input, blocks CSRF and isolates private files', async () => 
     (
       await a.delete('/api/documents', {
         data: { id },
-        headers: { Origin: 'http://localhost:3000' },
+        headers: { Origin: baseURL! },
       })
     ).ok(),
   ).toBeTruthy();
   expect((await a.get('/api/documents/' + id)).status()).toBe(404);
   const chat = await a.post('/api/consultant', {
     data: { message: 'What documents do I need for a Korean D-2 visa?' },
-    headers: { Origin: 'http://localhost:3000' },
+    headers: { Origin: baseURL! },
   });
   expect(chat.ok()).toBeTruthy();
-  expect((await chat.json()).state.messages.at(-1).text).toContain(
-    'do not currently have a verified',
+  const response = await chat.json();
+  expect(response.state.messages.at(-1).text).toMatch(
+    /Source:|Study in Korea/i,
   );
   await a.dispose();
   await b.dispose();
@@ -99,7 +102,8 @@ test('profile editing and private document review are usable', async ({
     );
   await page.getByRole('button', { name: 'Review my document' }).click();
   await expect(page.locator('.document-result')).toContainText(
-    'RULE-BASED WRITING CHECK',
+    /AI WRITING REVIEW|RULE-BASED WRITING CHECK/,
+    { timeout: 45000 },
   );
   await page
     .getByRole('button', { name: 'Delete document', exact: true })

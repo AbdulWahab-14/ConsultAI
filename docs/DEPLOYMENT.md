@@ -9,10 +9,10 @@ Build with `npm run build`. The expected Worker artifact is `dist/server/index.j
 | Variable              | Required for                                                          |
 | --------------------- | --------------------------------------------------------------------- |
 | `GEMINI_API_KEY`      | Gemini consultation, writing review and embeddings              |
-| `AI_MODEL`            | Explicit Responses-compatible model selection                         |
+| `AI_MODEL`            | Provider-specific structured-output model selection                         |
 | `EMBEDDING_MODEL`     | Optional; default `gemini-embedding-001`, 1536 dimensions           |
 | `ADMIN_EMAILS`        | Comma-separated administrator identity allowlist                      |
-| `DATABASE_URL`        | Optional Neon-compatible PostgreSQL HTTP retrieval index              |
+| `DATABASE_URL`        | Legacy external indexing script only; not used by active retrieval              |
 | `DIRECT_URL`          | Reserved for an external migration connection; not consumed by Worker |
 | `NEXT_PUBLIC_APP_URL` | Canonical application URL for future metadata/configuration           |
 | `CATALOG_URL`         | Indexing script only; approved readable `/api/catalog` endpoint       |
@@ -21,7 +21,7 @@ No API key is required for the labeled guided demo. Do not put secrets in NEXT_P
 
 ## Validation sequence
 
-Typecheck, lint, unit tests, browser/API tests, production build, review SQL migrations, package, publish privately, verify deployment status and test the resulting site. PostgreSQL schema can be validated without connecting; applying migrations and testing embeddings requires real external credentials.
+Typecheck, lint, unit tests, browser/API tests, production build, review SQL migrations, package, publish to the existing authorized audience, verify deployment status and test the resulting site. The additive D1 migration ships the reviewed Gemini embedding seed. No external PostgreSQL credentials are required.
 
 ## Vercel portability
 
@@ -29,8 +29,12 @@ This is not a ready-to-deploy Vercel build. Moving to native Next.js/Vercel requ
 
 ## Gemini configuration
 
-Set `AI_PROVIDER=gemini` (the default), `GEMINI_API_KEY` as a secret, and `AI_MODEL` to a Gemini model supporting structured output. Set `EMBEDDING_PROVIDER=gemini` and `EMBEDDING_MODEL=gemini-embedding-001` for the optional vector index. Both `.env` and hosted Sites variables require their own configuration. Redeploy after changing hosted settings.
+Set `AI_PROVIDER=gemini` (the default), `GEMINI_API_KEY` as a secret, and `AI_MODEL` to a Gemini model supporting structured output. Set `EMBEDDING_PROVIDER=gemini` and `EMBEDDING_MODEL=gemini-embedding-001` for the active D1 embedding index. Both `.env` and hosted Sites variables require their own configuration. Redeploy after changing hosted settings.
 
 To switch chat to the retained OpenAI adapter, set `AI_PROVIDER=openai`, `OPENAI_API_KEY` and an appropriate `AI_MODEL`. Embedding provider selection is independent and should remain unchanged unless you intend to reindex. Groq is a future adapter extension, not an active integration.
 
-Before enabling an existing PostgreSQL index with the new code, apply all Prisma migrations, including `202609100002_embedding_profile`, and rerun `npm run db:index`. Legacy vectors are marked as unknown and excluded until reindexed. Missing/unavailable vector storage falls back to reviewed keyword retrieval. `DIRECT_URL` and `NEXT_PUBLIC_APP_URL` are not used by the current Worker.
+The active index uses D1 `knowledge_chunks`. The seeded vectors are Gemini 1536-dimensional document embeddings. Retrieval embeds each query with the query task type, filters by embedding profile, freshness and matching summary hash, and combines cosine rank with keyword rank. If embeddings are unavailable, generation may still use reviewed keyword evidence and reports that retrieval mode. Configured generation errors return an explicit 503 rather than a guided answer.
+
+After changing embedding provider/model, use Admin > Reindex reviewed evidence. Source approvals index changed evidence atomically with publication. The retained Prisma scripts are not the active retrieval path.
+
+Production runtime verified: `AI_PROVIDER=gemini`, `AI_MODEL=gemini-3.6-flash`, `EMBEDDING_PROVIDER=gemini`, `EMBEDDING_MODEL=gemini-embedding-001`; Gemini key is a server secret. The owner/admin is `mrkidz6667@gmail.com`. Share `/profile` for empty visitor onboarding.

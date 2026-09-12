@@ -1,4 +1,8 @@
 'use client';
+import {
+  scholarships as seedScholarships,
+  visas as seedVisas,
+} from '@/lib/demo-knowledge';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
@@ -147,6 +151,8 @@ export function Choice({
 }
 export default function Workspace({ route }: { route: string }) {
   const [sources, setSources] = useState(seedSources);
+  const [scholarships, setScholarships] = useState(seedScholarships);
+  const [visas, setVisas] = useState(seedVisas);
   const [programs, setPrograms] = useState(seedPrograms);
   const [weights, setWeights] = useState(defaultWeights);
   useEffect(() => {
@@ -156,12 +162,16 @@ export default function Workspace({ route }: { route: string }) {
           r.json() as Promise<{
             sources: typeof seedSources;
             programs: typeof seedPrograms;
+            scholarships: typeof seedScholarships;
+            visas: typeof seedVisas;
             weights: typeof defaultWeights;
           }>,
       )
       .then((d) => {
         setSources(d.sources);
         setPrograms(d.programs);
+        setScholarships(d.scholarships);
+        setVisas(d.visas);
         setWeights(d.weights);
       })
       .catch(() => {});
@@ -445,7 +455,7 @@ export default function Workspace({ route }: { route: string }) {
             </Link>
           </div>
         </header>
-        <main className="workspace-main" data-ready={ready}>
+        <div className="workspace-main" data-ready={ready}>
           {notice && (
             <output className="notice">
               {notice}
@@ -918,6 +928,23 @@ export default function Workspace({ route }: { route: string }) {
                         No scholarship deducted. Travel, deposits, insurance and
                         visa expenses may add to your cost.
                       </p>
+                      <h3>Stored program facts</h3>
+                      <p>
+                        IELTS overall: {u.ielts ?? 'not verified'}; each
+                        component: {u.ieltsComponentMin ?? 'not verified'}
+                      </p>
+                      <p>
+                        Academic entry:{' '}
+                        {u.academicRequirement ||
+                          'qualification equivalence requires review'}
+                      </p>
+                      <p>
+                        Published tuition:{' '}
+                        {u.officialTuitionAmount == null
+                          ? 'not verified'
+                          : `${u.tuitionCurrency} ${u.officialTuitionAmount.toLocaleString()}`}{' '}
+                        {u.tuitionIntake || ''}
+                      </p>
                       <h3>Documents & next steps</h3>
                       <p>
                         Prepare academic records, passport, language evidence
@@ -928,7 +955,7 @@ export default function Workspace({ route }: { route: string }) {
                       {u.sourceIds.map(sourceLink)}
                       <p>{u.caveat}</p>
                       <p className="badge warning">
-                        Deadline: not verified for your intake
+                        Deadline: {u.deadline || 'not verified for your intake'}
                       </p>
                     </section>
                   </div>
@@ -1152,32 +1179,58 @@ export default function Workspace({ route }: { route: string }) {
                 text="Funding worth investigating, with the conditions in plain sight."
               />
               <div className="dashboard-columns">
-                {[
-                  {
-                    title: 'KAIST Scholarship',
-                    id: 'kaist-funding',
-                    body: 'Tuition exemption for eight semesters, KRW 350,000 monthly support and medical insurance for admitted international students.',
-                    status: 'Possible match · admission required',
-                  },
-                  {
-                    title: 'Global Korea Scholarship',
-                    id: 'gks',
-                    body: 'Government scholarship pathway. Nationality quotas, age, grades, eligible departments and the current call must be reviewed.',
-                    status: 'Missing information · current call needed',
-                  },
-                ].map((s) => (
+                {scholarships.map((s) => (
                   <section className="card" key={s.id}>
                     <Sparkles className="green" />
                     <h2>{s.title}</h2>
-                    <span className="badge warning">{s.status}</span>
-                    <p>{s.body}</p>
-                    <p>Deadline: no verified current deadline stored.</p>
-                    {sourceLink(s.id)}
+                    <span className="badge warning">
+                      {!s.degrees.includes(state.profile.degree)
+                        ? 'Degree does not match'
+                        : !state.profile.preferred.includes(s.country)
+                          ? 'Outside your selected destinations'
+                          : 'Potential opportunity - eligibility needs review'}
+                    </span>
+                    <p>
+                      {s.country}: {s.benefit}
+                    </p>
+                    <p>{s.requirements}</p>
+                    <p>
+                      Deadline:{' '}
+                      {s.deadline || 'no verified current deadline stored.'}
+                    </p>
+                    {s.sourceIds.map((id) => (
+                      <span key={id}>{sourceLink(id)}</span>
+                    ))}
+                    {s.sourceIds.some((id) => {
+                      const source = sources.find((r) => r.id === id);
+                      return (
+                        !source ||
+                        source.status !== 'VERIFIED' ||
+                        source.reviewDueAt <
+                          new Date().toISOString().slice(0, 10)
+                      );
+                    }) && (
+                      <p className="badge warning">
+                        Source needs review; confirm before applying.
+                      </p>
+                    )}
                     <p className="tiny">
-                      No award is deducted from your base budget.
+                      No award is deducted from your base budget. Continuation
+                      GPA is not an entrance requirement.
                     </p>
                   </section>
                 ))}
+                {state.profile.preferred.includes('Germany') &&
+                  !scholarships.some((s) => s.country === 'Germany') && (
+                    <section className="card">
+                      <h2>Germany funding</h2>
+                      <p>
+                        No current German scholarship call is verified in this
+                        small catalog. Check official university funding pages;
+                        zero tuition does not cover living costs.
+                      </p>
+                    </section>
+                  )}
               </div>
             </>
           )}
@@ -1199,6 +1252,23 @@ export default function Workspace({ route }: { route: string }) {
                     : 'A practical plan, without invented application deadlines.'
                 }
               />
+              {(page === 'visa' || page === 'roadmap') && (
+                <div className="dashboard-columns">
+                  {visas
+                    .filter((v) => state.profile.preferred.includes(v.country))
+                    .map((v) => (
+                      <section className="card" key={v.id}>
+                        <h2>
+                          {v.country}: {v.visaType}
+                        </h2>
+                        <p>{v.requirements}</p>
+                        {v.sourceIds.map((id) => (
+                          <span key={id}>{sourceLink(id)}</span>
+                        ))}
+                      </section>
+                    ))}
+                </div>
+              )}
               {page === 'applications' ? (
                 <>
                   {!state.applications.length && (
@@ -1329,9 +1399,9 @@ export default function Workspace({ route }: { route: string }) {
                   ))}
                   {sourceLink('uk-money')}
                   <p>
-                    Verified country-specific visa checklists for Korea and
-                    Germany are not yet stored. Confirm with the official
-                    authority.
+                    The official overviews above are starting points. Confirm
+                    the complete document checklist with the embassy responsible
+                    for your application.
                   </p>
                 </section>
               )}
@@ -1355,7 +1425,23 @@ export default function Workspace({ route }: { route: string }) {
                 {state.messages.map((m, i) => (
                   <div className={'message ' + m.role} key={i}>
                     <small>{m.role === 'user' ? p.name : 'ConsultAI'}</small>
-                    <p>{m.text}</p>
+                    <p>
+                      {m.text.split(/(https:\/\/[^\s]+)/g).map((part, index) =>
+                        sources.some((s) => s.url === part) ? (
+                          <a
+                            key={index}
+                            className="source-link"
+                            href={part}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Official source
+                          </a>
+                        ) : (
+                          part
+                        ),
+                      )}
+                    </p>
                   </div>
                 ))}
                 {busy && (
@@ -1577,7 +1663,7 @@ export default function Workspace({ route }: { route: string }) {
               </div>
             </>
           )}
-        </main>
+        </div>
         <footer className="app-footer">
           <ShieldCheck size={15} /> Built around evidence. Designed around you.
           <span>Fit is not a guarantee of admission.</span>
@@ -1610,6 +1696,18 @@ export default function Workspace({ route }: { route: string }) {
                 <dd>{source.authority}</dd>
                 <dt>Reviewed</dt>
                 <dd>{source.verifiedAt || 'Not verified'}</dd>
+                <dt>Reviewed summary SHA-256</dt>
+                <dd style={{ overflowWrap: 'anywhere' }}>
+                  {source.contentHash || 'Loading source metadata'}
+                </dd>
+                {source.captureHash && (
+                  <>
+                    <dt>Approved page capture SHA-256</dt>
+                    <dd style={{ overflowWrap: 'anywhere' }}>
+                      {source.captureHash}
+                    </dd>
+                  </>
+                )}
                 <dt>Review due</dt>
                 <dd>
                   {source.reviewDueAt}

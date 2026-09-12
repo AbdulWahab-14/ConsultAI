@@ -1,4 +1,4 @@
-import { createAIProvider, withGuidedFallback } from '@/ai/provider';
+import { createAIProvider } from '@/ai/provider';
 import { reviewDocument } from '@/ai/document-review';
 import { z } from 'zod';
 import {
@@ -45,11 +45,7 @@ export async function POST(request: Request) {
     ] as const;
     let review = `RULE-BASED WRITING CHECK · not an AI assessment\n\n${words} words. ${checks.filter(([, r]) => r.test(text)).length}/${checks.length} broad writing signals detected. These keyword signals do not measure authenticity or admission quality.\n\n${checks.map(([name, re]) => `${name}: ${re.test(text) ? 'A possible signal was found; check it is specific and supported.' : 'Add a concrete, truthful explanation if relevant.'}`).join('\n')}\n\nNext: connect your experience to a specific course or research area, explain what you learned, and remove generic claims. Never add achievements you cannot substantiate.`;
     const provider = createAIProvider(runtime());
-    if (provider)
-      review = await withGuidedFallback(
-        () => reviewDocument(text, provider),
-        review,
-      );
+    if (provider) review = await reviewDocument(text, provider);
     await runtime().DOCUMENTS.put(key, text, {
       httpMetadata: { contentType: 'text/plain' },
     });

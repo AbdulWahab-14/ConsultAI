@@ -1,4 +1,5 @@
 'use client';
+import type { Scholarship, VisaInfo } from '@/lib/demo-knowledge';
 import { useState, useEffect } from 'react';
 import {
   ShieldCheck,
@@ -26,6 +27,9 @@ type Review = {
 type AdminData = {
   sources: Source[];
   programs: Program[];
+  scholarships: Scholarship[];
+  visas: VisaInfo[];
+  index: { embedding_profile: string; chunks: number; indexedAt: string }[];
   weights: typeof defaultWeights;
   reviews: Review[];
   health: {
@@ -51,7 +55,9 @@ export default function AdminCenter({
     [weights, setWeights] = useState(defaultWeights),
     [selected, setSelected] = useState<Review | null>(null),
     [summary, setSummary] = useState(''),
-    [editor, setEditor] = useState<'sources' | 'programs' | null>(null),
+    [editor, setEditor] = useState<
+      'sources' | 'programs' | 'scholarships' | 'visas' | null
+    >(null),
     [jsonText, setJsonText] = useState('');
   async function refresh() {
     try {
@@ -253,7 +259,7 @@ export default function AdminCenter({
                   />
                 </label>
                 <Button type="submit" className="mt-4" disabled={busy}>
-                  Fetch source for review
+                  Refresh official source
                 </Button>
               </form>
             </section>
@@ -302,6 +308,42 @@ export default function AdminCenter({
             </form>
           </div>
           <section className="card">
+            <h2>Published official sources</h2>
+            {data.sources.map((source) => (
+              <div className="country-row" key={source.id}>
+                <div>
+                  <strong>{source.title}</strong>
+                  <small>
+                    {source.status} - verified {source.verifiedAt || 'not yet'}{' '}
+                    - review due {source.reviewDueAt}
+                  </small>
+                  <small style={{ overflowWrap: 'anywhere' }}>
+                    Summary SHA-256: {source.contentHash || 'not indexed'}
+                  </small>
+                </div>
+                <Button
+                  disabled={busy}
+                  variant="outline"
+                  onClick={() =>
+                    void request('/api/admin/sources', { url: source.url })
+                  }
+                >
+                  Refresh official source
+                </Button>
+              </div>
+            ))}
+            <h2>Evidence index</h2>
+            {data.index.map((i) => (
+              <p key={i.embedding_profile}>
+                {i.chunks} chunks - {i.embedding_profile} - {i.indexedAt}
+              </p>
+            ))}
+            <Button
+              disabled={busy}
+              onClick={() => void request('/api/admin/index', {})}
+            >
+              Reindex reviewed evidence
+            </Button>
             <h2>Source review queue</h2>
             {!data.reviews.length ? (
               <p>No sources fetched yet.</p>
@@ -407,21 +449,26 @@ export default function AdminCenter({
             <p>
               Program costs remain explicit scenarios unless you have
               independently verified the relevant fees. Every important program
-              fact should link to a reviewed source.
+              fact should link to a reviewed source. Programs contain the
+              university name and location. Add or update records in the editors
+              below; publishing is an explicit administrator review. Refreshing
+              a page never changes these facts automatically.
             </p>
             <div className="actions">
-              {(['sources', 'programs'] as const).map((key) => (
-                <Button
-                  variant="outline"
-                  key={key}
-                  onClick={() => {
-                    setEditor(key);
-                    setJsonText(JSON.stringify(data[key], null, 2));
-                  }}
-                >
-                  Edit {key}
-                </Button>
-              ))}
+              {(['sources', 'programs', 'scholarships', 'visas'] as const).map(
+                (key) => (
+                  <Button
+                    variant="outline"
+                    key={key}
+                    onClick={() => {
+                      setEditor(key);
+                      setJsonText(JSON.stringify(data[key], null, 2));
+                    }}
+                  >
+                    Edit {key}
+                  </Button>
+                ),
+              )}
             </div>
             {editor && (
               <>
@@ -448,7 +495,7 @@ export default function AdminCenter({
                     }
                   }}
                 >
-                  Validate and save catalog
+                  Review and publish catalog
                 </Button>
               </>
             )}

@@ -1,4 +1,4 @@
-import { neon } from '@neondatabase/serverless';
+import { cosine, contentHash } from '@/lib/knowledge';
 import type { Source } from '@/lib/catalog';
 import { runtime } from '@/server/runtime';
 import { getCatalog } from '@/server/catalog';
@@ -7,16 +7,16 @@ export async function hybridRetrieve(
   query: string,
 ): Promise<{ sources: Source[]; mode: string }> {
   const catalog = await getCatalog();
-  const country = /korea|kaist/i.test(query)
-    ? 'South Korea'
-    : /german/i.test(query)
-      ? 'Germany'
-      : /\buk\b|britain|sheffield/i.test(query)
-        ? 'United Kingdom'
-        : null;
+  const countries = [
+    [/korea|kaist|unist/i, 'South Korea'],
+    [/german|saarland|hbrs/i, 'Germany'],
+    [/\buk\b|united kingdom|britain|sheffield|southampton/i, 'United Kingdom'],
+  ]
+    .filter(([pattern]) => (pattern as RegExp).test(query))
+    .map(([, country]) => country);
   const topic = /visa|immigration/i.test(query)
     ? 'visa'
-    : /scholarship|stipend/i.test(query)
+    : /scholarship|funding|stipend/i.test(query)
       ? 'scholarship'
       : null;
   const tokens = query
@@ -26,8 +26,9 @@ export async function hybridRetrieve(
   const candidates = catalog.sources.filter(
     (s) =>
       s.status === 'VERIFIED' &&
-      new Date(s.reviewDueAt) >= new Date() &&
-      (!country || s.country === country) &&
+      !!s.verifiedAt &&
+      new Date(s.reviewDueAt + 'T23:59:59Z') >= new Date() &&
+      (!countries.length || countries.includes(s.country)) &&
       (!topic || s.topic === topic),
   );
   const lexical = candidates
@@ -46,31 +47,34 @@ export async function hybridRetrieve(
     mode: 'structured + keyword',
   };
   const provider = createEmbeddingProvider(config);
-  if (!config.DATABASE_URL || !provider || !candidates.length)
-    return lexicalResult;
+  if (!provider || !candidates.length) return lexicalResult;
   try {
     const [vector] = await provider.embed([query], 'RETRIEVAL_QUERY');
-    const sql = neon(config.DATABASE_URL);
-    const rows =
-      await sql`SELECT c.source_id, c.text, s."contentHash" AS source_hash FROM document_chunks c JOIN sources s ON s.id=c.source_id WHERE s."verificationStatus"='VERIFIED' AND s."reviewDueAt">NOW() AND c.source_id = ANY(${candidates.map((s) => s.id)}) AND c.embedding_profile = ${provider.profile} AND embedding IS NOT NULL ORDER BY c.embedding <=> ${JSON.stringify(vector)}::vector LIMIT 6`;
-    const hashes = new Map<string, string>();
-    await Promise.all(
-      candidates.map(async (s) => {
-        const hash = Array.from(
-          new Uint8Array(
-            await crypto.subtle.digest(
-              'SHA-256',
-              new TextEncoder().encode(s.text),
-            ),
-          ),
-          (b) => b.toString(16).padStart(2, '0'),
-        ).join('');
-        hashes.set(s.id, hash);
-      }),
+    const indexed = await config.DB.prepare(
+      'SELECT source_id,source_hash,text,embedding FROM knowledge_chunks WHERE embedding_profile=?',
+    )
+      .bind(provider.profile)
+      .all<{
+        source_id: string;
+        source_hash: string;
+        text: string;
+        embedding: string;
+      }>();
+    const hashes = new Map(
+      await Promise.all(
+        candidates.map(async (s) => [s.id, await contentHash(s.text)] as const),
+      ),
     );
-    const safeRows = rows.filter(
-      (r) => hashes.get(String(r.source_id)) === r.source_hash,
-    );
+    const safeRows = indexed.results
+      .filter(
+        (r) =>
+          hashes.get(r.source_id) === r.source_hash &&
+          candidates.find((s) => s.id === r.source_id)?.text.includes(r.text),
+      )
+      .map((r) => ({ ...r, score: cosine(vector, JSON.parse(r.embedding)) }))
+      .filter((r) => r.score > -1)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
     if (!safeRows.length) return lexicalResult;
     const ranked = new Map<string, number>();
     lexical.forEach((r, i) => ranked.set(r.s.id, 1 / (60 + i + 1)));
@@ -93,7 +97,7 @@ export async function hybridRetrieve(
               .join('\n')
               .slice(0, 6000) || s.text,
         })),
-      mode: 'structured + keyword + pgvector',
+      mode: `structured + keyword + embeddings (D1; ${provider.profile})`,
     };
   } catch {
     return lexicalResult;
