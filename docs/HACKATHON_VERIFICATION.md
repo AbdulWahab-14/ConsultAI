@@ -1,38 +1,42 @@
-# Hackathon completion verification
+# ConsultAI production verification - final release
 
-Production entry: https://consultai-study-strategy.mrkidz6667.chatgpt.site/profile
+Verified: 12 September 2026.
+Public entry: https://consultai-study-strategy.mrkidz6667.chatgpt.site/profile
+Admin: https://consultai-study-strategy.mrkidz6667.chatgpt.site/admin
 
-## Implemented scope
+## Deployment
 
-- Existing blank `/profile` onboarding, private visitor workspaces and user-owned analysis preserved.
-- Six universities across South Korea, Germany and the UK; 14 source records, 13 reviewed embedding records, four scholarship leads and three visa overviews.
-- D1 stores typed fields for IELTS/components, academic requirements, official tuition/currency, deadlines, scholarship GPA/credits/benefits and visa funds. PKR scenario estimates remain distinct from published tuition.
-- Gemini live structured generation, exact-quote citation validation, official clickable source links, query/document embeddings and hash-validated semantic retrieval. No PostgreSQL dependency for the demo.
-- Admin catalog edit/publish, official HTML refresh, content change detection, review queue, reject/approve, audit records and index rebuild. Refresh never publishes critical facts. Approval and indexing use a database transaction; an embedding failure leaves published evidence unchanged.
-- Every source exposes URL, verification date/status, review due date and reviewed-summary SHA-256. Approved captures have a separate full-page capture hash.
+- Version 6, successful public deployment.
+- Application commit: 1eacf0995840696535bdc908479a09c8489d4e30
+- Deployment: appgdep_6aa527e194b881918aabbd600ac4b2dd
+- Environment revision: 4.
+- AI_PROVIDER=gemini, AI_MODEL=gemini-3.6-flash.
+- EMBEDDING_PROVIDER=gemini, EMBEDDING_MODEL=gemini-embedding-001.
+- GEMINI_API_KEY configured as a server secret; no key is included here.
+- ADMIN_EMAILS=mrkidz6667@gmail.com.
+- Working tree clean; source and verification documentation pushed.
 
-## Deliberate data limits
+## Passed checks
 
-Current KAIST admission policy is flagged for review. German scholarship calls are not claimed verified. Scholarship continuation GPA is not treated as entrance GPA, and A-level grades are not converted to Pakistani percentages. Unknown deadlines and qualification equivalences remain explicitly unverified. Visa pages are official overviews, not complete embassy checklists. Source capture supports HTML/plain text on the existing approved official hosts.
+- Typecheck and lint.
+- 51 unit tests, including SQLite admin CRUD/review/change-detection and citation/embedding safeguards.
+- Production build.
+- All seven production browser/API tests on version 6, 2.8 minutes: profile creation and isolation; country/university/scholarship matching; Gemini live mode and D1 semantic retrieval; official clickable citations; saved shortlist and comparison; what-if simulation; persistent roadmap; document review/download/delete isolation; desktop and 390px mobile layouts.
+- Additional production admin API restrictions, including rejection of forged identity headers.
+- Production catalog contains six universities, 14 source records with hashes, four scholarship leads and three visa overviews; 13 reviewed source summaries indexed using Gemini embeddings.
+- Final live dashboard check confirms scholarship count derives from degree/destinations and IELTS prompts recognize completed component scores.
+- Source drawer, blank profile, personalized dashboard and mobile pages visually inspected. Physical iOS/Android devices were not used.
 
-## Checks
+## Admin verification and data limits
 
-Verified 12 September 2026:
+The owner confirmed that the production admin page opens. Authenticated admin CRUD and source review were tested with a controlled administrator fixture and real local SQLite. Production tests verified access restrictions; they did not write through the owner's signed-in browser.
 
-- Typecheck: passed.
-- Lint: passed.
-- Unit tests: 51 passed, including real SQLite admin publication/change-detection tests and hash/profile-gated semantic retrieval.
-- Production build: passed.
-- Local browser/API checks: seven scenarios passed across the final runs.
-- Production browser/API suite: all seven passed (2.9 minutes), covering blank profile creation/isolation, country/university/scholarship matching, live Gemini with D1 semantic retrieval and clickable citations, shortlist/comparison, what-if, roadmap persistence, private document review and desktop/mobile layouts.
-- Additional production API checks: catalog migration and 14 SHA-256 source hashes present; all admin endpoints reject public access; forged identity headers rejected; no Gemini key in public catalog output.
-- Visual checks: production mobile pages and desktop profile/dashboard/source drawer. Chrome desktop and 390px mobile viewport; physical iOS/Android devices were not used.
+Source refresh captures HTML/plain text from approved official hosts. Changed content enters review and never automatically replaces published critical facts. Explicit approval stores the reviewed summary, capture/summary hashes and updated embeddings transactionally. Admin catalog editors cover university/program records, scholarships, visas and sources.
 
-Production version: **5**. Application source commit: `10ac0bb209db7300efbecb9000aa0f657072efa6`.
-Deployment: `appgdep_6aa51cc12f808191a3a99534f9670d8f` - succeeded, environment revision 4.
+Current KAIST admission guidance remains flagged for review. No current German scholarship call is claimed verified. Published tuition is separate from PKR scenario budgets. Unknown deadlines and international qualification equivalences remain unverified. Scholarship continuation GPA is not an entrance GPA. Visa records are official overviews, not complete embassy-specific checklists.
 
-The owner confirmed the admin page opens. Authenticated admin CRUD/review was tested against local SQLite with a controlled administrator fixture; production checks verified access restrictions, not writes inside the owner's signed-in browser.
+## External action
 
-No additional API key, database account or deployment action is required to share the demo. Share the `/profile` URL above. For routine source maintenance, sign in at `/admin`, refresh an official source, review the captured change, edit the summary/structured records as needed and explicitly approve/publish. Do not treat unverified current-intake fields as established facts.
+No additional key, database account, hosting setup or deployment action is required. Share the profile URL. Each new browser session starts with an empty profile and must save its own education/goals before personalized analysis.
 
-The owner confirmed that the production admin page opens in their signed-in session. Automated tests exercise admin read/write, references, capture/change detection, rejection, approval, atomic indexing failure and unauthorized access. Browser tests use public, disposable workspaces and never reuse the owner's profile.
+For routine knowledge maintenance, sign in at /admin, refresh the official source, inspect the captured evidence, and explicitly approve the reviewed summary and any corresponding structured catalog edits.

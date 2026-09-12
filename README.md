@@ -2,6 +2,10 @@
 
 **Your verified AI consultant for studying abroad.**
 
+[Open the live demo](https://consultai-study-strategy.mrkidz6667.chatgpt.site/profile) - new visitors create their own education profile.
+
+[Production verification report](docs/HACKATHON_VERIFICATION.md)
+
 An explainable study-planning application with a working guided demo, evidence drawers, university comparisons, a what-if simulator, persistent applications, private document reviews and an administrator knowledge center.
 
 ## Run locally
