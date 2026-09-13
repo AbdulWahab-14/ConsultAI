@@ -5,11 +5,13 @@ import {
   real,
   index,
 } from 'drizzle-orm/sqlite-core';
+
 export const workspaces = sqliteTable('workspaces', {
   id: text('id').primaryKey(),
   state: text('state').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
 export const documents = sqliteTable(
   'documents',
   {
@@ -21,6 +23,7 @@ export const documents = sqliteTable(
   },
   (t) => [index('documents_owner').on(t.owner)],
 );
+
 export const sourceVersions = sqliteTable(
   'source_versions',
   {
@@ -34,6 +37,7 @@ export const sourceVersions = sqliteTable(
   },
   (t) => [index('source_versions_url').on(t.url)],
 );
+
 export const audit = sqliteTable('admin_audit', {
   id: text('id').primaryKey(),
   actor: text('actor').notNull(),
@@ -41,15 +45,18 @@ export const audit = sqliteTable('admin_audit', {
   recordId: text('record_id').notNull(),
   at: text('at').notNull(),
 });
+
 export const limits = sqliteTable('rate_limits', {
   id: text('id').primaryKey(),
   count: integer('count').notNull(),
   expires: integer('expires').notNull(),
 });
+
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
 // SQL fields support deterministic matching/reporting; payload retains the full reviewed record.
 export const catalogRecords = sqliteTable(
   'catalog_records',
@@ -80,6 +87,7 @@ export const catalogRecords = sqliteTable(
   },
   (t) => [index('catalog_kind_country').on(t.kind, t.country)],
 );
+
 export const knowledgeChunks = sqliteTable(
   'knowledge_chunks',
   {
@@ -92,4 +100,28 @@ export const knowledgeChunks = sqliteTable(
     indexedAt: text('indexed_at').notNull(),
   },
   (t) => [index('chunks_profile_source').on(t.embeddingProfile, t.sourceId)],
+);
+
+// --- NEW AUTHENTICATION TABLES ---
+
+export const users = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  email: text('email').notNull().unique(),
+  passwordHash: text('password_hash').notNull(),
+  fullName: text('full_name'),
+  role: text('role').default('user').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const sessions = sqliteTable(
+  'sessions',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: integer('expires_at').notNull(),
+  },
+  (t) => [index('sessions_user_id').on(t.userId)],
 );
